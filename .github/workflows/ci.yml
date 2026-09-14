@@ -1,4 +1,4 @@
-name: Verify
+name: Verify and publish
 on:
   push:
     branches: [main]
@@ -35,3 +35,25 @@ jobs:
         with:
           name: site
           path: dist/
+      - name: Package verified build for Pages
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist/
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Read Pages configuration
+        uses: actions/configure-pages@v5
+      - name: Publish verified build
+        id: deployment
+        uses: actions/deploy-pages@v4
