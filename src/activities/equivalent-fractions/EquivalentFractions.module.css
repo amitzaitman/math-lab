@@ -1,0 +1,13 @@
+.activity { max-width: 850px; margin: auto; }
+.topline { display:flex; justify-content:space-between; align-items:center; gap:1rem; font-size:.85rem; color:var(--muted); }
+.subtitle { color:var(--muted); line-height:1.7; }
+.progress { display:flex; gap:.5rem; margin:1.8rem 0; }
+.progress span { height:5px; background:#dedfd5; flex:1; border-radius:4px; }
+.progress span[data-filled="true"] { background:var(--teal); }
+.board { background:var(--paper); padding:2.2rem; border:1px solid #dce0d6; border-radius:24px; box-shadow:0 10px 35px #174c4508; }
+.label { margin-bottom: .9rem; font-size:.85rem; color:var(--muted); }
+.bridge { text-align:center; font-size:2.4rem; margin:.7rem 0; color:var(--teal); }
+.hint { margin:1.3rem 0 0; font-size:.8rem; color:var(--muted); }
+.feedback { display:flex; justify-content:space-between; align-items:center; gap:1rem; min-height:100px; }
+.feedback p { color:var(--teal); font-size:.9rem; }
+@media (max-width: 540px) { .board { padding:1.3rem; } .feedback { flex-direction:column; align-items:stretch; padding-top:.8rem; } }
