@@ -49,8 +49,12 @@ restores the prior value. Bars run LTR inside the Hebrew RTL shell.
 Pointer handling stays in FractionBar until a second use case justifies extraction.
 
 Five guided challenges cover halves, thirds, quarters, and fifths.
-Success uses gentle visual feedback. Advancement is explicit, giving the learner time
-to notice equivalence. No timed scoring. Reset is always available.
+The play surface is visual: two bars, progress dots, reset/help icons, and a drag cue.
+Instructions appear only in optional help; screen-reader labels remain available.
+Fraction notation appears on success in the first two rounds and stays visible later.
+Equality receives a 1.8-second visual pause before automatic advancement.
+Opening help pauses advancement. Reset/unmount cancel pending transitions.
+No timed scoring. Reset is always available.
 
 ## Offline
 

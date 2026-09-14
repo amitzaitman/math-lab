@@ -10,14 +10,14 @@ test('drag then finish the journey using keyboard', async ({page}) => {
   await page.mouse.move(box.x + box.width / 2, box.y + 20, {steps: 5});
   await page.mouse.up();
   await expect(page.getByRole('status')).toContainText('בדיוק');
-  await page.getByRole('button', {name:'ממשיכים'}).click();
+  await expect(slider).toHaveAttribute('aria-valuemax', '6');
   for (const n of [2, 6, 6, 4]) {
     await slider.focus();
     for (let i = 0; i < n; i++) await slider.press('ArrowRight');
     await expect(page.getByRole('status')).toContainText('בדיוק');
-    await page.getByRole('button', {name: n === 4 ? 'סיום המסע' : 'ממשיכים'}).click();
+    if (n !== 4) await expect(slider).toHaveAttribute('aria-disabled', 'false');
   }
-  await expect(page.getByRole('heading', {level:1})).toHaveText('חלקים שונים. אותה כמות.');
+  await expect(page.getByRole('button', {name:'ננסה שוב'})).toBeVisible();
   await page.getByRole('button', {name: 'ננסה שוב'}).click();
   await expect(slider).toHaveAttribute('aria-valuenow', '0');
 });
@@ -89,4 +89,27 @@ test('installed application reloads offline', async ({page, context, baseURL, br
     server.closeAllConnections();
     await new Promise<void>(resolve => server.close(() => resolve()));
   }
+});
+
+test('visual entry, gradual symbols, optional help, and reset cancel pending advance', async ({page}) => {
+  await page.clock.install();
+  await page.goto('./');
+  await expect(page.getByTestId('gesture')).toBeVisible();
+  await expect(page.getByTestId('fraction-symbol').first()).toBeHidden();
+  await expect(page.locator('main')).not.toContainText('מלאו את הפס');
+  await expect(page.getByRole('heading')).toHaveCount(0);
+  await page.getByRole('button', {name:'עזרה', exact:true}).click();
+  await expect(page.getByText('מלאו את הפס הזהוב', {exact:false})).toBeVisible();
+  await page.getByRole('button', {name:'עזרה', exact:true}).click();
+  const slider = page.getByRole('slider');
+  await slider.focus();
+  await slider.press('ArrowRight');
+  await slider.press('ArrowRight');
+  await expect(page.getByTestId('gesture')).toHaveCount(0);
+  await expect(page.getByTestId('fraction-symbol').first()).toBeVisible();
+  await page.getByRole('button', {name:'התחלה מחדש'}).click();
+  await page.clock.runFor(2500);
+  await expect(slider).toHaveAttribute('aria-valuemax', '4');
+  await expect(slider).toHaveAttribute('aria-valuenow', '0');
+  await expect(page.getByTestId('fraction-symbol').first()).toBeHidden();
 });

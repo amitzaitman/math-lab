@@ -4,9 +4,9 @@ import styles from './FractionBar.module.css';
 
 interface Props {
   numerator: number; denominator: number; label: string;
-  onChange?: (numerator: number) => void; disabled?: boolean;
+  onChange?: (numerator: number) => void; disabled?: boolean; showSymbol?: boolean;
 }
-export function FractionBar({numerator, denominator, label, onChange, disabled = false}: Props) {
+export function FractionBar({numerator, denominator, label, onChange, disabled = false, showSymbol = true}: Props) {
   const active = useRef<number | null>(null);
   const [draft, setDraft] = useState<number | null>(null);
   const interactive = !!onChange && !disabled;
@@ -60,6 +60,6 @@ export function FractionBar({numerator, denominator, label, onChange, disabled =
         <line key={i} x1={600 * (i + 1) / denominator} x2={600 * (i + 1) / denominator}
           y1="0" y2="100" stroke="var(--paper)" strokeWidth="4" />)}
     </svg>
-    <span className={styles.fraction} aria-hidden="true"><span>{shown}</span><span>{denominator}</span></span>
+    <span className={styles.fraction} style={{visibility: showSymbol ? 'visible' : 'hidden'}} data-testid="fraction-symbol" aria-hidden="true"><span>{shown}</span><span>{denominator}</span></span>
   </div>;
 }
