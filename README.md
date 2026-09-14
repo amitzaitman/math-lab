@@ -62,8 +62,11 @@ before claiming polished cross-device installation.
 
 ## Publishing and next steps
 
-The base URL is /math-lab/. CI uploads verified dist for static hosting.
-Pages deployment is not configured yet. Built dist files do not belong in Git.
+The base URL is /math-lab/. The workflow publishes the exact verified dist artifact to
+GitHub Pages after successful checks on main. PRs verify but never deploy.
+Select GitHub Actions as the Pages source in repository settings.
+Site: https://amitzaitman.github.io/math-lab/
+Built dist files do not belong in Git.
 
-Next: commit the generated lockfile, test on real iOS, add raster icons, configure Pages.
+Next: commit the generated lockfile, test on real iOS, add raster icons.
 Then add a splitting-fractions activity and extract only genuinely shared interaction code.
