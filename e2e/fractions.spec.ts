@@ -44,9 +44,10 @@ test('installed application reloads offline', async ({page, context}) => {
   await page.goto('./');
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
-    if (!navigator.serviceWorker.controller)
-      await new Promise<void>(resolve => navigator.serviceWorker.addEventListener('controllerchange', () => resolve(), {once:true}));
   });
+  // Prompt-mode workers do not claim the page that installed them.
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
   await context.setOffline(true);
   await page.reload();
   await expect(page.getByRole('slider')).toBeVisible();
