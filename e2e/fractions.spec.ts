@@ -24,6 +24,8 @@ test('cut, undo, redo, join, and complete via accessible controls',async({page},
   await cut(page,'1/2').click();
   await place(page,5,1);await place(page,6,2);
   await expect(page.getByRole('button',{name:'הפעילות הבאה'})).toBeEnabled();
+  // Capture the settled canvas, after its 230 ms placement tween.
+  await page.waitForTimeout(350);
   await page.screenshot({path:testInfo.outputPath('assembled.png'),fullPage:true});
   await page.getByRole('button',{name:'הפעילות הבאה'}).click();
   await expect(page.getByRole('button',{name:'חצי בשתי דרכים',exact:true})).toHaveAttribute('aria-current','step');
