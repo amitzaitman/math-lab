@@ -1,47 +1,85 @@
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { expect, test } from '@playwright/test';
-test('drag then finish the journey using keyboard', async ({page}) => {
+import { expect, test, type Page } from '@playwright/test';
+const chip=(page:Page,id:number)=>page.getByRole('button',{name:new RegExp('^חתיכה '+id+',')});
+const cut=(page:Page,ratio:string)=>page.getByRole('button',{name:'חיתוך בנקודה '+ratio,exact:true});
+const pieces=(page:Page)=>page.getByRole('group',{name:'בחירת חתיכות'}).getByRole('button');
+async function place(page:Page,id:number,slot:number){
+  await chip(page,id).click();
+  await page.getByRole('button',{name:'הנחה במסגרת '+slot,exact:true}).click();
+}
+test('cut, undo, redo, join, and complete via accessible controls',async({page},testInfo)=>{
   await page.goto('./');
-  const slider = page.getByRole('slider');
-  const box = (await slider.boundingBox())!;
-  await page.mouse.move(box.x + 2, box.y + 20);
-  await page.mouse.down();
-  await page.mouse.move(box.x + box.width / 2, box.y + 20, {steps: 5});
+  await expect(page.locator('.help-panel')).toHaveCount(0);
+  await expect(page.getByRole('slider')).toHaveCount(0);
+  await cut(page,'1/2').focus();await cut(page,'1/2').press('Enter');
+  await expect(pieces(page)).toHaveCount(2);
+  await page.getByRole('button',{name:'ביטול',exact:true}).click();
+  await expect(pieces(page)).toHaveCount(1);
+  await page.getByRole('button',{name:'ביצוע מחדש',exact:true}).click();
+  await expect(pieces(page)).toHaveCount(2);
+  await chip(page,2).click();await chip(page,3).click();
+  await page.getByRole('button',{name:'חיבור החתיכות שנבחרו'}).click();
+  await expect(pieces(page)).toHaveCount(1);
+  await cut(page,'1/2').click();
+  await place(page,5,1);await place(page,6,2);
+  await expect(page.getByRole('button',{name:'הפעילות הבאה'})).toBeEnabled();
+  await page.screenshot({path:testInfo.outputPath('assembled.png'),fullPage:true});
+  await page.getByRole('button',{name:'הפעילות הבאה'}).click();
+  await expect(page.getByRole('button',{name:'חצי בשתי דרכים',exact:true})).toHaveAttribute('aria-current','step');
+  await cut(page,'1/2').click();await place(page,2,1);await place(page,3,1);
+  await expect(page.getByRole('button',{name:'הפעילות הבאה'})).toBeEnabled();
+});
+test('real canvas drag snaps a cut piece to a target',async({page})=>{
+  await page.goto('./');await cut(page,'1/2').click();
+  const box=(await page.getByTestId('table').boundingBox())!;
+  const point=(x:number,y:number)=>({x:box.x+x*box.width/960,y:box.y+y*box.width/960});
+  const a=point(240,460),b=point(250,210);
+  await page.mouse.move(a.x,a.y);await page.mouse.down();
+  await page.mouse.move(b.x,b.y,{steps:12});await page.mouse.up();
+  await expect(chip(page,2)).toHaveAccessibleName(/במסגרת/);
+  await page.getByRole('button',{name:'ביטול',exact:true}).click();
+  await expect(chip(page,2)).toHaveAccessibleName(/במגש/);
+});
+test('touch canvas selection and tap destination work after resize',async({page,isMobile},testInfo)=>{
+  test.skip(!isMobile,'Touch project');
+  await page.goto('./');await cut(page,'1/2').click();
+  let box=(await page.getByTestId('table').boundingBox())!;
+  await page.touchscreen.tap(box.x+250*box.width/960,box.y+455*box.width/960);
+  await expect(chip(page,2)).toHaveAttribute('aria-pressed','true');
+  await page.touchscreen.tap(box.x+290*box.width/960,box.y+205*box.width/960);
+  await expect(chip(page,2)).toHaveAccessibleName(/במסגרת/);
+  await page.setViewportSize({width:844,height:390});
+  box=(await page.getByTestId('table').boundingBox())!;
+  await expect(page.getByTestId('table')).toBeVisible();
+  expect(box.width).toBeLessThanOrEqual(844);
+  await page.screenshot({path:testInfo.outputPath('landscape.png'),fullPage:true});
+});
+test('cancelled drag preserves quantities and placement',async({page})=>{
+  await page.goto('./');await cut(page,'1/2').click();
+  const box=(await page.getByTestId('table').boundingBox())!;
+  const x=box.x+250*box.width/960,y=box.y+455*box.width/960;
+  await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x,y-50,{steps:6});
+  await page.evaluate(()=>window.dispatchEvent(new Event('pointercancel')));
   await page.mouse.up();
-  await expect(page.getByRole('status')).toContainText('בדיוק');
-  await expect(slider).toHaveAttribute('aria-valuemax', '6');
-  for (const n of [2, 6, 6, 4]) {
-    await slider.focus();
-    for (let i = 0; i < n; i++) await slider.press('ArrowRight');
-    await expect(page.getByRole('status')).toContainText('בדיוק');
-    if (n !== 4) await expect(slider).toHaveAttribute('aria-disabled', 'false');
-  }
-  await expect(page.getByRole('button', {name:'ננסה שוב'})).toBeVisible();
-  await page.getByRole('button', {name: 'ננסה שוב'}).click();
-  await expect(slider).toHaveAttribute('aria-valuenow', '0');
+  await expect(chip(page,2)).toHaveAccessibleName(/במגש/);
+  await expect(pieces(page)).toHaveCount(2);
+  await page.getByRole('button',{name:'ביטול',exact:true}).click();
+  await expect(pieces(page)).toHaveCount(1);
 });
-test('touch tap selects a fraction', async ({page, isMobile}) => {
-  test.skip(!isMobile, 'Touch-enabled project');
+test('same piece changes its fraction when the referent changes',async({page},testInfo)=>{
+  await page.emulateMedia({reducedMotion:'reduce'});
   await page.goto('./');
-  const slider = page.getByRole('slider');
-  const box = (await slider.boundingBox())!;
-  await page.touchscreen.tap(box.x + box.width / 2, box.y + 20);
-  await expect(slider).toHaveAttribute('aria-valuenow', '2');
-  await expect(page.getByRole('status')).toContainText('בדיוק');
+  await page.getByRole('button',{name:'חצי בשתי דרכים',exact:true}).click();
+  await page.getByRole('button',{name:'הצגת שברים',exact:true}).click();
+  await expect(chip(page,1)).toHaveAccessibleName(/1\/2/);
+  await page.getByRole('button',{name:'שינוי השלם להשוואה'}).click();
+  await expect(chip(page,1)).toHaveAccessibleName('חתיכה 1, 1, במגש');
+  await page.getByRole('button',{name:'ביטול',exact:true}).click();
+  await expect(chip(page,1)).toHaveAccessibleName(/1\/2/);
+  await page.screenshot({path:testInfo.outputPath('table.png'),fullPage:true});
 });
-test('pointer cancellation restores the committed value', async ({page}) => {
-  await page.goto('./');
-  const slider = page.getByRole('slider');
-  const box = (await slider.boundingBox())!;
-  await page.mouse.move(box.x + 4, box.y + 20);
-  await page.mouse.down();
-  await page.mouse.move(box.x + box.width / 2, box.y + 20);
-  await slider.dispatchEvent('pointercancel', {pointerId: 1});
-  await page.mouse.up();
-  await expect(slider).toHaveAttribute('aria-valuenow', '0');
-  await expect(page.getByRole('button', {name:'ממשיכים'})).toHaveCount(0);
-});
+
 test('installed application reloads offline', async ({page, context, baseURL, browserName}) => {
   let disconnected = false;
   const server = createServer(async (req, res) => {
@@ -80,36 +118,12 @@ test('installed application reloads offline', async ({page, context, baseURL, br
     if (browserName !== 'webkit') await context.setOffline(true);
     await expect.poll(probe).toBe('network-error');
     await page.reload();
-    await expect(page.getByRole('slider')).toBeVisible();
-    await page.getByRole('slider').focus();
-    await page.getByRole('slider').press('ArrowRight');
-    await expect(page.getByRole('slider')).toHaveAttribute('aria-valuenow', '1');
+    await expect(page.getByTestId('table').locator('canvas')).toBeVisible();
+    await page.getByRole('button',{name:'חיתוך בנקודה 1/2',exact:true}).click();
+    await expect(page.getByRole('group',{name:'בחירת חתיכות'}).getByRole('button')).toHaveCount(2);
   } finally {
     if (browserName !== 'webkit') await context.setOffline(false);
     server.closeAllConnections();
     await new Promise<void>(resolve => server.close(() => resolve()));
   }
-});
-
-test('visual entry, gradual symbols, optional help, and reset cancel pending advance', async ({page}) => {
-  await page.clock.install();
-  await page.goto('./');
-  await expect(page.getByTestId('gesture')).toBeVisible();
-  await expect(page.getByTestId('fraction-symbol').first()).toBeHidden();
-  await expect(page.locator('main')).not.toContainText('מלאו את הפס');
-  await expect(page.getByRole('heading')).toHaveCount(0);
-  await page.getByRole('button', {name:'עזרה', exact:true}).click();
-  await expect(page.getByText('מלאו את הפס הזהוב', {exact:false})).toBeVisible();
-  await page.getByRole('button', {name:'עזרה', exact:true}).click();
-  const slider = page.getByRole('slider');
-  await slider.focus();
-  await slider.press('ArrowRight');
-  await slider.press('ArrowRight');
-  await expect(page.getByTestId('gesture')).toHaveCount(0);
-  await expect(page.getByTestId('fraction-symbol').first()).toBeVisible();
-  await page.getByRole('button', {name:'התחלה מחדש'}).click();
-  await page.clock.runFor(2500);
-  await expect(slider).toHaveAttribute('aria-valuemax', '4');
-  await expect(slider).toHaveAttribute('aria-valuenow', '0');
-  await expect(page.getByTestId('fraction-symbol').first()).toBeHidden();
 });

@@ -1,76 +1,90 @@
-# Math Lab · מעבדת החשבון
+# Math Lab · מעבדת השברים
 
-A touch-friendly visual mathematics lab. First activity: equivalent fractions.
+A visual cutting and assembly table, built with React, Konva and exact rational arithmetic.
 
-## Run
+**Play:** https://amitzaitman.github.io/math-lab/
 
-Node.js 24 and npm:
+## The experience
+
+The old matching-slider activity has been replaced by five investigations:
+
+1. Cut a whole into two equal halves and fill two half-sized frames.
+2. Replace a half with two equal pieces: two quarters cover the same area.
+3. Assemble a whole from a half and two quarters.
+4. Make thirds: cut off one third, then halve the remaining two thirds.
+5. Explore freely: cut, join, and build different representations.
+
+Children can select cut locations including unequal splits, join selected tray pieces,
+undo/redo, drag onto frames, or tap a piece and then a destination.
+Frames display dots for the requested number of pieces. A correct amount alone does not
+complete challenges that require equal parts or a particular partition.
+Success keeps the table available for investigation; the child chooses when to continue.
+
+The ruler button changes the reference whole from one unit to half a unit without resizing
+any pieces. The eye button reveals notation. Help is optional; the normal table uses
+objects, icons, and minimal mathematical symbols. Screen-reader descriptions remain available.
+
+## Stack
+
+- React + TypeScript + Vite
+- Konva + react-konva for canvas objects, built-in drag, hit detection and tweens
+- Fraction.js for exact arithmetic and comparisons; plain rational strings in state
+- Lucide React for tool icons
+- CSS Grid/Flexbox for the surrounding controls, not for fake 3D objects
+- Vitest + Playwright; vite-plugin-pwa for local offline assets
+
+Shapes have shallow sides and shadows. Their measurable top faces remain undistorted.
+No physics engine, free polygon clipping, or independent gesture framework.
+
+## Develop
+
+Node 24 and npm:
 
 ```sh
-npm install
+npm ci
 npm run dev
 ```
 
 Open http://localhost:5173/math-lab/.
-
-## Verify
 
 ```sh
 npx playwright install --with-deps chromium webkit
 npm run verify
 ```
 
-Runs unit tests, strict TypeScript, production build, and browser tests.
-Tests cover the full journey, pointer drag/cancel, mobile tap, keyboard, and offline reload.
-WebKit emulation does not replace testing drag and PWA installation on real iOS hardware.
+## Structure
 
-CI runs on main and PRs and uploads the built site and test traces.
-Bootstrap limitation: generate and commit package-lock.json after verification.
-Until then CI uses npm install and uploads the resolved lockfile as an artifact;
-once committed, CI automatically uses npm ci.
+- src/lab/model.ts: exact quantities, reference whole, cuts, joins, placement, history
+- src/lab/Table.tsx: Konva presentation, responsive logical coordinates, native drag
+- src/lab/Lab.tsx: investigation sequence and accessible DOM controls
+- src/lab/model.test.ts: conservation, rejection, equivalence, reference changes, undo/redo
+- e2e/fractions.spec.ts: real canvas mouse/touch, keyboard, cancellation, resizing, offline
 
-## Structure and decisions
+Model snapshots are JSON-safe and versioned. Display coordinates never decide equality.
+One completed drag is one history action. Invalid placements preserve the prior state.
+Undo stores at most 60 prior snapshots. The smallest piece is 1/12 of the original unit,
+and a scene is capped at 12 pieces to keep interaction manageable on phones.
 
-- src/app: shell and update prompt
-- src/activities/equivalent-fractions: local reducer and learning sequence
-- src/manipulatives: SVG FractionBar with pointer and keyboard interaction
-- src/math: pure fraction validation, exact equality, snapping
-- src/styles: tokens and layout
-- e2e: production-browser tests
+Progress is currently session-only. A versioned model enables future persistence, but
+no claim of cross-session saving is made.
 
-One application, one package. React + strict TypeScript + Vite, CSS Modules,
-SVG, local reducers, Vitest, Playwright, vite-plugin-pwa.
-No backend, accounts, analytics, global store, generic activity engine, or monorepo.
-JSXGraph is an option for future geometry/graphs, not a core dependency.
+## Validation and publishing
 
-Fractions preserve numerator/denominator representation. Equality uses exact integer
-arithmetic, not pixel widths. Dragging previews and commits on release; cancellation
-restores the prior value. Bars run LTR inside the Hebrew RTL shell.
-Pointer handling stays in FractionBar until a second use case justifies extraction.
+CI runs unit tests, strict type checking, production build and Playwright in Chromium
+and mobile WebKit. It publishes the exact tested build from main to GitHub Pages.
+PRs verify without publishing. CI captures screenshots and traces as test artifacts.
 
-Five guided challenges cover halves, thirds, quarters, and fifths.
-The play surface is visual: two bars, progress dots, reset/help icons, and a drag cue.
-Instructions appear only in optional help; screen-reader labels remain available.
-Fraction notation appears on success in the first two rounds and stays visible later.
-Equality receives a 1.8-second visual pause before automatic advancement.
-Opening help pauses advancement. Reset/unmount cancel pending transitions.
-No timed scoring. Reset is always available.
+WebKit's automation offline override blocks cached navigation, so the offline test uses
+an isolated server whose connections are cut and verifies an uncached request fails.
+Real iOS testing and observation with children remain necessary; automated tests do not
+establish teaching effectiveness or real-device install quality.
 
-## Offline
+The PWA caches all activity assets after the first successful online installation.
+Updates prompt before reloading; no content CDN, remote fonts or accounts are needed.
+The manifest still uses an SVG icon; polished Apple installation icons remain future work.
 
-Offline use requires one successful online load and service-worker installation.
-Updates prompt before reloading and do not interrupt the activity automatically.
-Progress is session-only. No CDN, external fonts, or network API during play.
-The SVG manifest icon is an initial placeholder: add raster Apple/install icons
-before claiming polished cross-device installation.
+## Next investigations
 
-## Publishing and next steps
-
-The base URL is /math-lab/. The workflow publishes the exact verified dist artifact to
-GitHub Pages after successful checks on main. PRs verify but never deploy.
-Select GitHub Actions as the Pages source in repository settings.
-Site: https://amitzaitman.github.io/math-lab/
-Built dist files do not belong in Git.
-
-Next: commit the generated lockfile, test on real iOS, add raster icons.
-Then add a splitting-fractions activity and extract only genuinely shared interaction code.
+Add overlap-based comparisons and a guided prediction before changing the reference whole.
+Observe whether children understand unequal splits, conservation and equivalence before
+extending to arbitrary shapes, common denominators or more rendering engines.
